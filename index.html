@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>生活韧性与抗压偏好探究</title>
+<script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+<style>
+:root { --theme-color: #8da48e; --sub-color: #f7f3f0; --text-main: #5a5a5a; }
+body::before { content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: url("https://www.transparenttextures.com/patterns/asfalt-dark.png"); opacity: 0.06; pointer-events: none; z-index: 100; }
+@keyframes wiggle { 0%, 100% { transform: translate(0, 0) rotate(0deg); } 33% { transform: translate(1px, -1px) rotate(0.3deg) scale(1.001); } 66% { transform: translate(-1px, 1px) rotate(-0.2deg); } }
+@keyframes flow { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+body { background-color: #f7f3f0; color: var(--text-main); font-family: -apple-system, sans-serif; margin: 0; display: flex; justify-content: center; overflow-x: hidden; }
+#app { width: 100%; max-width: 414px; min-height: 100vh; background: #fff; position: relative; box-shadow: 0 0 50px rgba(0,0,0,0.05); }
+.page-quiz { padding: 25px; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; }
+.question-card { background: #fff; border-radius: 28px; padding: 35px 25px; border: 2px solid #f0ece3; box-shadow: 0 10px 30px rgba(0,0,0,0.02); }
+.question-text { font-weight: 700; font-size: 1.15rem; line-height: 1.6; color: #333; margin-bottom: 30px; }
+.option-btn { display: block; width: 100%; padding: 18px; margin-bottom: 14px; border: 2.5px solid #f2ede4; border-radius: 20px; background: #fff; text-align: left; font-size: 0.95rem; color: #5a5a5a; transition: all 0.2s; -webkit-tap-highlight-color: transparent; outline: none; border-bottom-width: 4px; }
+.option-btn:active { transform: translateY(2px); border-bottom-width: 2px; border-color: var(--theme-color); background-color: #f9fbf9; }
+.stress-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(30, 40, 50, 0.98); color: #fff; z-index: 1000; display: flex; flex-direction: column; justify-content: center; padding: 40px; text-align: center; backdrop-filter: blur(8px); }
+.result-view { position: relative; animation: fadeIn 1.2s; background: #fff; }
+.img-mask-container { width: 100%; height: 480px; overflow: hidden; -webkit-mask-image: linear-gradient(to bottom, black 0%, black 70%, transparent 100%); mask-image: linear-gradient(to bottom, black 70%, transparent 100%); }
+.animal-img { width: 100%; height: 100%; object-fit: cover; animation: wiggle 4s infinite ease-in-out; }
+.result-content { margin-top: -100px; padding: 0 32px 80px; position: relative; z-index: 10; text-align: center; }
+.title-text { font-size: 2rem; color: var(--theme-color); font-weight: 900; margin-bottom: 8px; letter-spacing: -0.5px; }
+.res-box { background: rgba(255,255,255,0.95); border-radius: 24px; padding: 22px; border: 1.5px solid var(--theme-color); margin: 25px 0; }
+.res-bar-bg { height: 12px; background: #eee; border-radius: 6px; overflow: hidden; margin: 12px 0; position: relative; }
+.res-bar-fill { height: 100%; transition: width 2s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 1.5s; position: relative; }
+.res-bar-fill::after { content: ""; position: absolute; top:0; left:0; width:60px; height:100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent); animation: flow 2.5s infinite linear; }
+.anchors-row { display: flex; justify-content: space-between; margin-top: 15px; padding: 0 5px; }
+.anchor-item { display: flex; flex-direction: column; align-items: center; font-size: 0.7rem; color: #aaa; transition: 0.5s; }
+.anchor-dot { width: 11px; height: 11px; border-radius: 50%; margin-bottom: 6px; transition: 0.8s; }
+<body>
+<div id="app">
+    <div v-if="!showResult" class="page-quiz">
+        <div class="question-card">
+            <div style="font-size: 0.75rem; color: #ccc; margin-bottom: 10px; letter-spacing: 1px;">PROGRESS {{ currentIndex + 1 }} / 17</div>
+            <div class="question-text">{{ questions[currentIndex].text }}</div>
+            <div style="margin-top: 20px;">
+                <button v-for="opt in questions[currentIndex].options" @click="handleAnswer(opt)" class="option-btn">{{ opt.text }}</button>
+            </div>
+        </div>
+    </div>
+
+    <div v-if="showStress" class="stress-overlay" @click="showStress = false">
+        <div style="font-size: 4rem; margin-bottom: 20px;">🌪️</div>
+        <h3 style="font-size: 1.5rem; margin-top:0;">生活抛来一颗“变化球”</h3>
+        <p style="font-size: 1.05rem; line-height: 1.7; opacity: 0.9;">假设未来大环境进入“低速增长期”，你的生活韧性能否扛住不确定的风浪？</p>
+        <p style="margin-top: 50px; opacity: 0.5; font-size: 0.85rem;">点击屏幕，带着这份真实继续...</p>
+    </div>
+
+    <div v-if="showResult" class="result-view" :style="themeStyles">
+        <div class="img-mask-container">
+            <img :src="currentTheme.img" class="animal-img">
+        </div>
+        <div class="result-content">
+            <div class="title-text">{{ currentTheme.title }}</div>
+            <div style="font-size: 0.75rem; color: #bbb; letter-spacing: 3px; font-weight: 500;">LIFE RESILIENCE REPORT</div>
+            
+            <div class="res-box">
+                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 700; color: var(--theme-color);">
+                    <span>生活韧性指数</span><span>{{ resilienceLabel }}</span>
+                </div>
+                <div class="res-bar-bg"><div class="res-bar-fill" :style="{ width: resPercent + '%', backgroundColor: resColor }"></div></div>
+                
+                <div class="anchors-row">
+                    <div v-for="(val, key) in dimensionScores" :key="key" class="anchor-item" :class="{ dimmed: val === 0 }">
+                        <div class="anchor-dot" :style="{ backgroundColor: val > 0 ? currentTheme.color : '#e0e0e0' }"></div>
+                        <span>{{ dimNames[key] }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <p class="insight-text">{{ resultInsight }}</p>
+            <button class="cta-btn" @click="activate">激活我的专属确权计划</button>
+            <div style="margin-top: 20px; font-size: 0.8rem; color: #ccc;">© 2026 生活韧性实验室</div>
+        </div>
+    </div>
+</div>
+.dimmed { opacity: 0.25; transform: scale(0.9); }
+.dimmed .anchor-dot { animation: pulseGray 2s infinite; }
+@keyframes pulseGray { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+.insight-text { color: #666; line-height: 1.85; text-align: justify; font-size: 1rem; margin-top: 20px; }
+.cta-btn { background: var(--theme-color); color: white; border: none; padding: 20px; border-radius: 22px; width: 100%; font-size: 1.15rem; font-weight: bold; margin-top: 30px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); cursor: pointer; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<script>
+new Vue({
+    el: '#app',
+    data: {
+        currentIndex: 0, showResult: false, showStress: false, resiliencePoints: 0,
+        scores: { leopard: 0, elephant: 0, squirrel: 0, swan: 0, turtle: 0 },
+        dimensionScores: { income: 0, responsibility: 0, safety: 0, dignity: 0 },
+        dimNames: { income: '收入替代', responsibility: '责任守护', safety: '资产止损', dignity: '尊严品质' },
+        familyPoints: 0, userContext: 'single',
+        themes: {
+            leopard: { title: '独行的猎豹', color: '#e29494', bg: '#fdf3f3', img: 'https://cdn.discordapp.com/attachments/1470665469206855712/1470678279248678986/upscale_cec4db33-d314-4294-8889-1830291171f8_3.png' },
+            elephant: { title: '负重的巨象', color: '#94a7e2', bg: '#f3f5fd', img: 'https://media.discordapp.net/attachments/1470665469206855712/1470708036715806842/upscale_ebef4f8e-1c9e-459c-bf0b-803f128b6730_4.png' },
+            swan: { title: '优雅的天鹅', color: '#8da48e', bg: '#f5f7f5', img: 'https://media.discordapp.net/attachments/1470665469206855712/1470709152115593309/upscale_5a5f53f7-8c12-4487-b410-4c105805a0d3_1.png' },
+            turtle: { title: '隐居的陆龟', color: '#a394e2', bg: '#f6f3fd', img: 'https://media.discordapp.net/attachments/1470665469206855712/1470709684468973711/upscale_a435e76e-3e70-4095-b849-674d624d3555_2.png' },
+            squirrel: { title: '储粮的松鼠', color: '#d4a373', bg: '#fdfaf5', img: 'https://media.discordapp.net/attachments/1470665469206855712/1470709838412779581/upscale_36d79a1f-8d89-4864-80b4-60f02b02b91f_4.png' }
+        },
+        questions: [
+            { text: "账户里多出 2 万元“横财”，你的第一反应：", options: [ { text: "换个随身物件，提升生活质感", type: "swan", dim: "dignity" }, { text: "划入稳定账户，看着余额增加才安心", type: "squirrel", dim: "safety" }, { text: "投进理财账户，看看能否翻倍", type: "leopard", dim: "income" }, { text: "给在意的人买份礼物或存入共用金", type: "elephant", dim: "responsibility", context: "family" } ] },
+            { text: "常用家电突然坏了，维修费要花掉一两周薪水：", options: [ { text: "只要修好就行，别影响生活节奏", type: "leopard", res: 1, dim: "income" }, { text: "非常心疼，下个月要在别处省回来", type: "squirrel", res: 0, dim: "safety" }, { text: "换个更高品质的，全家用着舒服", type: "elephant", res: 1, dim: "responsibility" }, { text: "先凑合用着，以后再说", type: "turtle" } ] },
+            { text: "面对昂贵但非必需的“心动款”，下单理由是：", options: [ { text: "“这是对我努力的奖赏，我值得”", type: "swan", dim: "dignity" }, { text: "“这东西耐用，能省下不少换新钱”", type: "squirrel", dim: "safety" }, { text: "“它是提升效率的自我投资”", type: "leopard", dim: "income" }, { text: "“家人也能用，挺值的”", type: "elephant", context: "family", dim: "responsibility" } ] },
+            { text: "如果工作不顺心，你敢辞职的底气是：", options: [ { text: "我有硬本事，到哪都能重新开始", type: "leopard", dim: "income" }, { text: "存款够多，歇半年也没压力", type: "squirrel", dim: "safety" }, { text: "有可靠支持体系，不是一个人在战斗", type: "elephant", dim: "responsibility" }, { text: "先熬着吧，换工作也难", type: "turtle" } ] },
+            { text: "刚买一个月的手机碎屏了，维修费昂贵：", options: [ { text: "郁郁寡欢好几天，不断自责", res: 0 }, { text: "既然发生了就解决，不浪费情绪", res: 2 }, { text: "无所谓，裂了也能用", type: "turtle" }, { text: "找官方售后，必须恢复如初", type: "swan", dim: "dignity" } ] },
+            { text: "如果身体预警要你彻底歇半年，你最愁：", options: [ { text: "职业位置被占，脱离了圈子", type: "leopard", dim: "income" }, { text: "医药费和生活费正在吃掉积蓄", type: "squirrel", dim: "safety" }, { text: "没人分担琐事，怕在乎的人担心", type: "elephant", context: "family", dim: "responsibility" }, { text: "养病的样子太狼狈，不想让人看到", type: "swan", dim: "dignity" } ] },
+            { text: "偶尔想到“万一我顶不住了”，你会：", options: [ { text: "想了也没用，只能看命", type: "turtle" }, { text: "不敢深思，怕连累家人", type: "elephant", context: "family", dim: "responsibility" }, { text: "已尽力留了一些防身资产", type: "squirrel", res: 1, dim: "safety" }, { text: "相信我建立的体系能支撑很久", type: 'leopard', res: 2, dim: 'income' } ] },
+            { text: "压力之下必须砍掉一项消费，你最先放弃：", options: [ { text: "那些精致的下午茶或个人爱好", type: 'swan', dim: 'dignity' }, { text: "计划了很久的全家旅行", type: 'elephant', dim: 'responsibility' }, { text: "已经坚持很久的自我进修", type: 'leopard', dim: 'income' }, { text: "看心情，哪笔还没付就砍哪笔", type: 'turtle' } ] },
+            { text: "有个翻倍也可能赔一半的机会，现在的你会：", options: [ { text: "拿出一笔亏得起的钱试一把", type: 'leopard', dim: 'income' }, { text: "坚决拒绝，守住钱就是赢", type: 'squirrel', dim: 'safety' }, { text: "深入研究是否能作为长期依靠", type: 'elephant', dim: 'responsibility' }, { text: "如果不听起来不够体面，就不参与", type: 'swan', dim: 'dignity' } ] },
+            { text: "理财账户一周少了 5%，你的第一反应：", options: [ { text: "只要我不看，它就没少", res: 1 }, { text: "手心出汗，怀疑判断并想撤资", res: 0 }, { text: "计算是否影响明年的重大计划", type: 'elephant', res: 1, dim: 'responsibility' }, { text: "觉得是噪音，不影响资产版图", type: 'leopard', res: 2, dim: 'income' } ] },
+            { text: "看到别人众筹看病，你会想：", options: [ { text: "太被动了，我必须有更确定的自救方案", type: 'squirrel', dim: 'safety' }, { text: "生活无常，每个人都该建避风港", type: 'elephant', dim: 'responsibility' }, { text: "这就是命，普通人很难抗拒风险", type: 'turtle' }, { text: "这种方式不体面，不希望自己也这样", type: 'swan', dim: 'dignity' } ] },
+            { text: "想象中老了以后最舒服的状态：", options: [ { text: "依然在折腾喜欢的事，像年轻人一样", type: 'leopard', dim: 'income' }, { text: "守着确定的收益，不看任何人脸色", type: 'squirrel', dim: 'safety' }, { text: "有可靠的朋友圈，生活有寄托", type: 'elephant', dim: 'responsibility' }, { text: "住在高标准社区，享受专业照护", type: 'swan', dim: 'dignity' } ] },
+            { text: "你觉得留给世界最好的“礼物”：", options: [ { text: "一段超越自我的精彩历史", type: 'leopard', dim: 'income' }, { text: "“我把自己照顾得很好”，不让在乎的人担心", context: 'single' }, { text: "一笔能让珍视的人受益的资产", context: 'family', dim: 'responsibility' }, { text: "曾优雅地生活过，留下了某种审美", type: 'swan', dim: 'dignity' } ] },
+            { text: "多花钱能换来更有尊严的治疗时：", options: [ { text: "尊严无价，再多钱也可以再赚", type: 'swan', dim: 'dignity' }, { text: "要权衡，要为以后人生留足余量", type: 'squirrel', dim: 'safety' }, { text: "如果能换回重返事业的机会，选体面", type: 'leopard', dim: 'income' }, { text: "听医生的，或者看存款剩多少", type: 'turtle' } ] },
+            { text: "假如你中了大奖，最想换取的“能力”：", options: [ { text: "随时切换生活赛道的权利", type: 'leopard', dim: 'income' }, { text: "哪怕倒下也能维持家人的恒定力量", type: 'elephant', dim: 'responsibility' }, { text: "买断余生大病风险的特权", type: 'swan', dim: 'dignity' }, { text: "一座永不枯竭的财富金矿", type: 'squirrel', dim: 'safety' } ] },
+            { text: "财富自由后，你在城堡外修一道墙，挡住：", options: [ { text: "挡住“老去时的狼狈”", type: 'swan', dim: 'dignity' }, { text: "挡住“突发的变故”，确保幸福不中断", type: 'elephant', dim: 'responsibility' }, { text: "挡住“财富的流失”，确保安全感", type: 'squirrel', dim: 'safety' }, { text: "挡住“平庸的束缚”，确保永远有选择", type: 'leopard', dim: 'income' } ] },
+            { text: "哪句话最能让你瞬间放松：", options: [ { text: "“我随时有底气重新开始”", type: 'leopard', dim: 'income' }, { text: "“我有独立资本，不依附不拖累任何人”", context: 'single' }, { text: "“我握着解决意外的万能钥匙”", type: 'squirrel', dim: 'safety' }, { text: "“无论发生什么，家人的生活不会变”", context: 'family', dim: 'responsibility' } ] }
+        ]
+    },
+computed: {
+        winner() { 
+            if (this.scores.turtle >= 4) return 'turtle'; 
+            let max = -1, type = 'leopard'; 
+            for (let t in this.scores) { 
+                if (t !== 'turtle' && this.scores[t] > max) { 
+                    max = this.scores[t]; type = t; 
+                } 
+            } 
+            return type; 
+        },
+        currentTheme() { return this.themes[this.winner]; },
+        themeStyles() { return { '--theme-color': this.currentTheme.color, '--sub-color': this.currentTheme.bg }; },
+        resPercent() { return Math.min((this.resiliencePoints / 25) * 100, 100); },
+        resColor() { const hue = 30 + (this.resPercent * 0.9); return `hsl(${hue}, 60%, 70%)`; },
+        resilienceLabel() { return this.resPercent < 35 ? '🌱 萌芽级' : (this.resPercent < 75 ? '🌳 成长级' : '城堡级 🏰'); },
+        resultInsight() {
+            const isSingle = this.userContext === 'single', m = {
+                leopard: "你对自由的热爱是生命最美的燃料。建立缓冲并不是限制速度，而是为你修筑更平整的跑道。",
+                elephant: isSingle ? "你非常清醒，把自己当成最亲近的家人来守护。这种独立是最高的自律。" : "你的爱像月光一样温柔地覆盖着你在意的人。确权化会让你的肩膀真正松弛。",
+                squirrel: "每颗攒下的‘松果’都见证了努力。给存钱罐加防护罩，你会获得真正的快乐。",
+                swan: "你对体面生活的坚持是平庸现实中的光。建立防御系统，让格调成为‘永恒态’。",
+                turtle: "慢一点也没关系。既然看见了漏洞，不如用最简单的方式给自由加个锁。"
+            }; return m[this.winner];
+        }
+    },
+    methods: {
+        handleAnswer(o) {
+            if(o.type) this.scores[o.type]++; 
+            if(o.dim) this.dimensionScores[o.dim]++; 
+            if(o.res) this.resiliencePoints += o.res;
+            if(o.context){ if(o.context === 'family') this.familyPoints++; else this.familyPoints--; }
+            if(this.currentIndex === 6) this.showStress = true;
+            if(this.currentIndex < 16) this.currentIndex++;
+            else { this.userContext = this.familyPoints >= 0 ? 'family' : 'single'; this.showResult = true; window.scrollTo(0,0); }
+        },
+        activate() { alert("【确权行动激活】\n您的保障蓝图已生成，正在为您连接专属顾问..."); }
+    }
+});
+</script>
+</body>
+</html>
